@@ -1,12 +1,12 @@
 from django.contrib.auth.backends import ModelBackend
-from lazysignup.models import LazyUser
+from lazysignup.models import get_lazy_user_model
 from django.contrib.auth import get_user_model
 
 
 class LazySignupBackend(ModelBackend):
 
     def authenticate(self, request=None, username=None):
-        user_class = LazyUser.get_user_class()
+        user_class = get_lazy_user_model().get_user_class()
         try:
             return user_class.objects.get(**{
                 get_user_model().USERNAME_FIELD: username
@@ -18,7 +18,7 @@ class LazySignupBackend(ModelBackend):
         # Annotate the user with our backend so it's always available,
         # not just when authenticate() has been called. This will be
         # used by the is_lazy_user filter.
-        user_class = LazyUser.get_user_class()
+        user_class = get_lazy_user_model().get_user_class()
         try:
             user = user_class.objects.get(pk=user_id)
         except user_class.DoesNotExist:

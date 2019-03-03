@@ -32,8 +32,8 @@ def allow_lazy_user(func):
             # get_user will return an anonymous user
             if get_user(request).is_anonymous and not ignore:
                 # If not, then we have to create a user, and log them in.
-                from lazysignup.models import LazyUser
-                user, username = LazyUser.objects.create_lazy_user()
+                from lazysignup.models import get_lazy_user_model
+                user, username = get_lazy_user_model().objects.create_lazy_user()
                 request.user = None
                 user = authenticate(username=username)
                 assert user, ("Lazy user creation and authentication "

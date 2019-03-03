@@ -12,5 +12,5 @@ def is_lazy_user(user):
         return True
 
     # Otherwise, we have to fall back to checking the database.
-    from lazysignup.models import LazyUser
-    return bool(LazyUser.objects.filter(user=user).count() > 0)
+    from lazysignup.models import get_lazy_user_model
+    return bool(get_lazy_user_model().objects.filter(user=user).count() > 0)

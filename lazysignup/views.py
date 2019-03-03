@@ -10,7 +10,7 @@ from django.utils.module_loading import import_string
 
 from lazysignup.decorators import allow_lazy_user
 from lazysignup.exceptions import NotLazyError
-from lazysignup.models import LazyUser
+from lazysignup.models import LazyUser, get_lazy_user_model
 from lazysignup.forms import UserCreationForm
 from lazysignup import constants
 
@@ -41,7 +41,7 @@ def convert(request, form_class=None,
         form = form_class(request.POST, instance=request.user)
         if form.is_valid():
             try:
-                LazyUser.objects.convert(form)
+                get_lazy_user_model().objects.convert(form)
             except NotLazyError:
                 # If the user already has a usable password, return a Bad
                 # Request to an Ajax client, or just redirect back for a

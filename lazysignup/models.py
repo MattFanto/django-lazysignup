@@ -2,8 +2,10 @@ import re
 import uuid
 
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from django.db import models
 from django.utils.timezone import now
+from django.apps import apps as django_apps
 import six
 
 from lazysignup.constants import USER_AGENT_BLACKLIST
@@ -24,7 +26,22 @@ for user_agent in getattr(settings, 'LAZYSIGNUP_USER_AGENT_BLACKLIST', DEFAULT_B
     USER_AGENT_BLACKLIST.append(re.compile(user_agent, re.I))
 
 
-class LazyUserManager(models.Manager):
+def get_lazy_user_model():
+    """
+    Return the User model that is active in this project.
+    """
+    lazy_user_model_class = getattr(settings, 'LAZYSIGNUP_LAZY_USER_MODEL', 'lazysignup.LazyUser')
+    try:
+        return django_apps.get_model(lazy_user_model_class, require_ready=False)
+    except ValueError:
+        raise ImproperlyConfigured("LAZYSIGNUP_LAZY_USER_MODEL must be of the form 'app_label.model_name'")
+    except LookupError:
+        raise ImproperlyConfigured(
+            "LAZYSIGNUP_LAZY_USER_MODEL refers to model '%s' that has not been installed" % lazy_user_model_class
+        )
+
+
+class AbstractLazyUserManager(models.Manager):
 
     def __hash__(self):
         """
@@ -33,6 +50,26 @@ class LazyUserManager(models.Manager):
         return hash(str(self))
 
     username_field = get_user_model().USERNAME_FIELD
+
+    def create_lazy_user(self):
+        """ Create a lazy user. Returns a 2-tuple of the underlying User
+        object (which may be of a custom class), and the username.
+        """
+        raise NotImplemented('LazyUserManager must implement create_lazy_user method')
+
+    def convert(self, form):
+        """ Convert a lazy user to a non-lazy one. The form passed
+        in is expected to be a ModelForm instance, bound to the user
+        to be converted.
+
+        The converted ``User`` object is returned.
+
+        Raises a TypeError if the user is not lazy.
+        """
+        raise NotImplemented('LazyUserManager must implement convert method')
+
+
+class LazyUserManager(AbstractLazyUserManager):
 
     def create_lazy_user(self):
         """ Create a lazy user. Returns a 2-tuple of the underlying User
@@ -77,10 +114,9 @@ class LazyUserManager(models.Manager):
 
 
 @six.python_2_unicode_compatible
-class LazyUser(models.Model):
+class AbstractLazyUser(models.Model):
     user = models.OneToOneField(constants.LAZYSIGNUP_USER_MODEL, on_delete=models.CASCADE)
-    created = models.DateTimeField(default=now, db_index=True)
-    objects = LazyUserManager()
+    objects = AbstractLazyUserManager()
 
     @classmethod
     def get_user_class(cls):
@@ -92,5 +128,16 @@ class LazyUser(models.Model):
             rel_to = related_user_field.remote_field.model if related_user_field.remote_field else None
         return rel_to
 
+    class Meta:
+        abstract = True
+
+
+@six.python_2_unicode_compatible
+class LazyUser(AbstractLazyUser):
+    created = models.DateTimeField(default=now, db_index=True)
+    objects = LazyUserManager()
+
     def __str__(self):
         return '{0}:{1}'.format(self.user, self.created)
+
+

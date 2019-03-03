@@ -3,7 +3,7 @@ from django.conf import settings
 
 from django.core.management.base import BaseCommand
 
-from lazysignup.models import LazyUser
+from lazysignup.models import get_lazy_user_model
 
 
 class Command(BaseCommand):
@@ -20,6 +20,6 @@ class Command(BaseCommand):
     def to_delete(self):
         delete_before = datetime.datetime.now() - datetime.timedelta(
             seconds=settings.SESSION_COOKIE_AGE)
-        return LazyUser.objects.filter(
+        return get_lazy_user_model().objects.filter(
             user__last_login__lt=delete_before
         ).select_related('user')

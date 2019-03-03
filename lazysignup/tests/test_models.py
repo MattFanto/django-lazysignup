@@ -1,6 +1,6 @@
 from django.test import TestCase
 
-from lazysignup.models import LazyUser
+from lazysignup.models import get_lazy_user_model
 
 
 class LazyUserModelTests(TestCase):
@@ -14,7 +14,7 @@ class LazyUserModelTests(TestCase):
         """
         Tests str method on LazyUser
         """
-        user, username = LazyUser.objects.create_lazy_user()
+        user, username = get_lazy_user_model().objects.create_lazy_user()
         lazyuser = user.lazyuser
 
         self.assertEqual(

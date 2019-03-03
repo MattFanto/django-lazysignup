@@ -1,7 +1,7 @@
 from django.test import TestCase
 from mock import Mock
 
-from lazysignup.models import LazyUser
+from lazysignup.models import LazyUser, get_lazy_user_model
 
 
 class LazyUserManagerTests(TestCase):
@@ -17,7 +17,7 @@ class LazyUserManagerTests(TestCase):
 
         mock_user_class._meta.get_field.return_value.max_length = 32
 
-        username = LazyUser.objects.generate_username(mock_user_class)
+        username = get_lazy_user_model().objects.generate_username(mock_user_class)
 
         self.assertEqual(len(username), 32)
 
@@ -28,7 +28,7 @@ class LazyUserManagerTests(TestCase):
         mock_user_class = Mock()
         mock_user_class.generate_username.return_value = 'testusername'
 
-        username = LazyUser.objects.generate_username(mock_user_class)
+        username = get_lazy_user_model().objects.generate_username(mock_user_class)
 
         mock_user_class.generate_username.assert_called_once_with()
         self.assertEqual(username, 'testusername')

@@ -1,10 +1,10 @@
 import datetime
 from django.conf import settings
 from django.contrib import admin
-from .models import LazyUser
+from .models import get_lazy_user_model
 
 
-@admin.register(LazyUser)
+@admin.register(get_lazy_user_model())
 class LazyUserAdmin(admin.ModelAdmin):
     list_display = ('user', 'created',)
     actions = ('cleanup_lazyusers',)

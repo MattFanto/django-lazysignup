@@ -27,7 +27,7 @@ from lazysignup.backends import LazySignupBackend
 from lazysignup.decorators import allow_lazy_user
 from lazysignup.exceptions import NotLazyError
 from lazysignup.management.commands import remove_expired_users
-from lazysignup.models import LazyUser
+from lazysignup.models import LazyUser, get_lazy_user_model
 from lazysignup.signals import converted
 from lazysignup.utils import is_lazy_user
 
@@ -138,7 +138,7 @@ class LazyTestCase(TestCase):
         # password and the Django user model. Make sure that it actually
         # uses the LazyUser mechanism.
         get_user_model().objects.create_user('dummy2', '')
-        user, _ = LazyUser.objects.create_lazy_user()
+        user, _ = get_lazy_user_model().objects.create_lazy_user()
         user.last_login = datetime.datetime(1972, 1, 1)
         user.save()
         c = remove_expired_users.Command()
@@ -151,8 +151,8 @@ class LazyTestCase(TestCase):
         # The remove_expired_users should look at SESSION_COOKIE_AGE to figure
         # out whether to delete users. It will delete users who have not
         # logged in since datetime.datetime.now - SESSION_COOKIE_AGE.
-        user1, _ = LazyUser.objects.create_lazy_user()
-        user2, _ = LazyUser.objects.create_lazy_user()
+        user1, _ = get_lazy_user_model().objects.create_lazy_user()
+        user2, _ = get_lazy_user_model().objects.create_lazy_user()
         user1.last_login = datetime.datetime(1972, 1, 1)
         user1.save()
         c = remove_expired_users.Command()
@@ -340,13 +340,13 @@ class LazyTestCase(TestCase):
         # most of the session key to the world.
         session_key = self.request.session.session_key
         assert session_key
-        user, username = LazyUser.objects.create_lazy_user()
+        user, username = get_lazy_user_model().objects.create_lazy_user()
         self.assertFalse(session_key.startswith(username))
 
     def test_created_date(self):
         # Check that a lazy user has a created field.
-        user, username = LazyUser.objects.create_lazy_user()
-        lazy_user = LazyUser.objects.get(user=user)
+        user, username = get_lazy_user_model().objects.create_lazy_user()
+        lazy_user = get_lazy_user_model().objects.get(user=user)
         self.assertFalse(lazy_user.created is None)
 
     def test_decorator_order(self):
@@ -379,7 +379,7 @@ class LazyTestCase(TestCase):
     def test_lazy_user_not_logged_in(self):
         # Check that the is_lazy_user works for users who were created
         # lazily but are not the current logged-in user
-        user, username = LazyUser.objects.create_lazy_user()
+        user, username = get_lazy_user_model().objects.create_lazy_user()
         self.assertTrue(is_lazy_user(user))
 
     def test_anonymous_not_lazy(self):
@@ -406,7 +406,7 @@ class LazyTestCase(TestCase):
     def test_convert_good(self):
         # Check that the convert() method on the lazy user manager
         # correctly converts the lazy user
-        user, username = LazyUser.objects.create_lazy_user()
+        user, username = get_lazy_user_model().objects.create_lazy_user()
         d = {
             'username': 'test',
             'password1': 'password',
@@ -415,19 +415,19 @@ class LazyTestCase(TestCase):
         form = GoodUserCreationForm(d, instance=user)
         self.assertTrue(form.is_valid())
 
-        user = LazyUser.objects.convert(form)
+        user = get_lazy_user_model().objects.convert(form)
         self.assertFalse(is_lazy_user(user))
 
     def test_convert_non_lazy(self):
         # Attempting to convert a non-lazy user should raise a TypeError
         user = get_user_model().objects.create_user('dummy', 'dummy@dummy.com', 'dummy')
         form = GoodUserCreationForm(instance=user)
-        self.assertRaises(NotLazyError, LazyUser.objects.convert, form)
+        self.assertRaises(NotLazyError, get_lazy_user_model().objects.convert, form)
 
     def test_user_field(self):
         # We should find that our LAZSIGNUP_CUSTOM_USER setting has been
         # respected.
-        self.assertEqual(get_user_model(), LazyUser.get_user_class())
+        self.assertEqual(get_user_model(), get_lazy_user_model().get_user_class())
 
     def test_authenticated_user_class(self):
         # We should find that the class of request.user is that of
@@ -443,7 +443,7 @@ class LazyTestCase(TestCase):
         # the custom user class.
         lazy_view(self.request)
         backend = LazySignupBackend()
-        user_class = LazyUser.get_user_class()
+        user_class = get_lazy_user_model().get_user_class()
         pk = user_class.objects.all()[0].pk
         self.assertEqual(user_class, type(backend.get_user(pk)))
 
@@ -468,7 +468,7 @@ class LazyTestCase(TestCase):
         The ``converted`` signal should be dispatched when a user is
         successfully converted.
         """
-        user, username = LazyUser.objects.create_lazy_user()
+        user, username = get_lazy_user_model().objects.create_lazy_user()
         d = {
             'username': 'test',
             'password1': 'password',
@@ -483,17 +483,17 @@ class LazyTestCase(TestCase):
             self.handled = True
         converted.connect(handler)
         # convert user
-        user = LazyUser.objects.convert(form)
+        user = get_lazy_user_model().objects.convert(form)
         # check signal
         self.assertTrue(self.handled)
 
     def test_lazy_user_enters_requires_lazy_decorator(self):
-        self.request.user, _ = LazyUser.objects.create_lazy_user()
+        self.request.user, _ = get_lazy_user_model().objects.create_lazy_user()
         response = requires_lazy_view(self.request)
         self.assertEqual(response.status_code, 200)
 
     def test_lazy_user_enters_requires_nonlazy_decorator(self):
-        self.request.user, _ = LazyUser.objects.create_lazy_user()
+        self.request.user, _ = get_lazy_user_model().objects.create_lazy_user()
         try:
             requires_nonlazy_view(self.request)
         except NoReverseMatch:

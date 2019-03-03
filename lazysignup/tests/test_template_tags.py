@@ -2,7 +2,7 @@ from django.test import TestCase
 from django.contrib.auth import get_user_model
 
 from lazysignup.templatetags.lazysignup_tags import is_lazy_user
-from lazysignup.models import LazyUser
+from lazysignup.models import get_lazy_user_model
 
 
 class TemplateTagTests(TestCase):
@@ -15,7 +15,7 @@ class TemplateTagTests(TestCase):
             email='user1@example.com',
             password='password'
         )
-        self.lazy_user, self.lazy_username = LazyUser.objects.create_lazy_user()
+        self.lazy_user, self.lazy_username = get_lazy_user_model().objects.create_lazy_user()
 
     def test_is_not_lazy(self):
         is_lazy = is_lazy_user(self.user)
